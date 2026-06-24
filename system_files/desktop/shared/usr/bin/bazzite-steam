@@ -37,8 +37,7 @@ if [[ $IMAGE_NAME =~ "deck" ]]; then
     /usr/bin/bazzite-steam-brand
   fi
 
-  # Single file written by `ujust toggle-steam-devices`. Holds the chosen Steam
-  # launch command override; we read its contents and act on it.
+  # Override file written by `ujust toggle-steam-devices`. cats the override file to extract the contents. 
   STEAM_DEVICES_OVERRIDES="$HOME/.config/bazzite/steam_devices_overrides"
 
   # Default to the regular Steam Deck behavior unless an override is present
