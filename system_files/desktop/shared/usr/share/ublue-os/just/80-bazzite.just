@@ -1307,6 +1307,56 @@ _toggle-steamdeck-alias:
         ;;
     esac
 
+# Toggle whether Steam launches with the -steamdeck flag or the -steammachine flag
+[group("gaming")]
+_toggle-steam-devices:
+    #!/usr/bin/bash
+    # Toggles whether Steam presents itself as a Steam Deck or a Steam Machine
+    override_flag="$HOME/.config/bazzite/enable-steammachine-flag"
+    session_dir="$HOME/.config/gamescope-session-plus/sessions.d"
+    session_file="$session_dir/steam"
+    mkdir -p "$(dirname "$override_flag")"
+    mkdir -p "$session_dir"
+    cat > "$session_file" <<'EOF'
+    MACHINE_OVERRIDE_FLAG="$HOME/.config/bazzite/enable-steammachine-flag"
+    if [[ ! -f "$MACHINE_OVERRIDE_FLAG" ]]; then
+      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
+    else
+      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steammachine"
+    fi
+    EOF
+    current_status="Steam Deck"
+    if [[ -f "$override_flag" ]]; then
+      current_status="Steam Machine"
+    fi
+    echo -e "\nCurrent Steam device: $current_status\n"
+    CHOICE=$(ugum choose \
+      "Present as Steam Deck (Enable -steamdeck)" \
+      "Present as Steam Machine (Enable -steammachine)" \
+      "Exit without changes")
+    case "$CHOICE" in
+      "Present as Steam Deck (Enable -steamdeck)")
+        if [[ -f "$override_flag" ]]; then
+          rm -f "$override_flag"
+          echo -e "\nSteam Deck presentation ENABLED. (-steamdeck will be passed to Steam)\n"
+          echo "Reboot your system for the change to take effect."
+        else
+          echo -e "\nAlready enabled.\n"
+        fi
+        ;;
+      "Present as Steam Machine (Enable -steammachine)")
+        touch "$override_flag"
+        echo -e "\nSteam Machine presentation ENABLED. (-steammachine will be passed to Steam)\n"
+        echo "Reboot your system for the change to take effect."
+        ;;
+      "Exit without changes")
+        echo "No changes made."
+        ;;
+      *)
+        echo "Invalid choice. Exiting."
+        ;;
+    esac
+
 # get logs for this boot and last boot, cleanly output in terminal as pastebin links, to simplify troubleshooting and issue reporting.
 [group("utilities")]
 get-logs:

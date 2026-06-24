@@ -40,12 +40,19 @@ if [[ $IMAGE_NAME =~ "deck" ]]; then
   # File toggle to override default Steam Deck flag behavior
   DECK_OVERRIDE_FLAG="$HOME/.config/bazzite/disable_steamdeck_flag"
 
-  # Required to maintain the Steam update branch between desktop & Steam Game Mode
-  if [[ ! -f "$DECK_OVERRIDE_FLAG" ]]; then
-    DECK_OPTION="-steamdeck"
-  else
-    DECK_OPTION=""
-  fi
+  # File toggle to enable Steam Machine flag
+  MACHINE_OVERRIDE_FLAG="$HOME/.config/bazzite/enable-steammachine-flag"
+
+    if [[ -f "$DECK_OVERRIDE_FLAG" ]]; then
+      # If a user has explicitly disabled the Steam Deck flag, don't try and override it with the Machine flag
+      DECK_OPTION=""
+    elif [[ -f "$MACHINE_OVERRIDE_FLAG" ]]; then
+      # Otherwise apply the Steam Machine flag
+      DECK_OPTION="-steammachine"
+    else
+      # Default is the regular Steam Deck behavior
+      DECK_OPTION="-steamdeck"
+    fi
 else
   # Display a window which tells the user that Steam is about to be opened for the first time
   if [[ -f /usr/bin/bazzite-steam-firstrun ]] && [[ $DISABLE_FIRSTRUN -ne 1 ]]; then
