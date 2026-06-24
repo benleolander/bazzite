@@ -37,22 +37,25 @@ if [[ $IMAGE_NAME =~ "deck" ]]; then
     /usr/bin/bazzite-steam-brand
   fi
 
-  # File toggle to override default Steam Deck flag behavior
-  DECK_OVERRIDE_FLAG="$HOME/.config/bazzite/disable_steamdeck_flag"
+  # Single file written by `ujust toggle-steam-devices`. Holds the chosen Steam
+  # launch command override; we read its contents and act on it.
+  STEAM_DEVICES_OVERRIDES="$HOME/.config/bazzite/steam_devices_overrides"
 
-  # File toggle to enable Steam Machine flag
-  MACHINE_OVERRIDE_FLAG="$HOME/.config/bazzite/enable-steammachine-flag"
+  # Default to the regular Steam Deck behavior unless an override is present
+  DECK_OPTION="-steamdeck"
 
-    if [[ -f "$DECK_OVERRIDE_FLAG" ]]; then
-      # If a user has explicitly disabled the Steam Deck flag, don't try and override it with the Machine flag
-      DECK_OPTION=""
-    elif [[ -f "$MACHINE_OVERRIDE_FLAG" ]]; then
-      # Otherwise apply the Steam Machine flag
+  if [[ -f "$STEAM_DEVICES_OVERRIDES" ]]; then
+    # The file holds a full `steam ...` command; derive the device flag from it.
+    override_cmd="$(cat "$STEAM_DEVICES_OVERRIDES")"
+    if [[ "$override_cmd" == *"-steammachine"* ]]; then
       DECK_OPTION="-steammachine"
-    else
-      # Default is the regular Steam Deck behavior
+    elif [[ "$override_cmd" == *"-steamdeck"* ]]; then
       DECK_OPTION="-steamdeck"
+    else
+      # Override present with no device flag: present as a generic, non-Steam device
+      DECK_OPTION=""
     fi
+  fi
 else
   # Display a window which tells the user that Steam is about to be opened for the first time
   if [[ -f /usr/bin/bazzite-steam-firstrun ]] && [[ $DISABLE_FIRSTRUN -ne 1 ]]; then

@@ -1257,99 +1257,65 @@ global-dlss ACTION="":
             ;;
     esac
 
-# Toggle whether Steam launches with the -steamdeck flag, which causes Big Picture / Game Mode to emulate Steam Deck behavior. Disabling this can prevent games from forcing Steam Deck-specific assets, such as lower-resolution textures.
+# Choose how Steam presents this system on launch: as a Steam Deck, a Steam Machine, or a generic (non-Steam) device. Writes the chosen launch command to ~/.config/bazzite/steam_devices_overrides, which bazzite-steam reads on the next launch.
 [group("gaming")]
-_toggle-steamdeck-alias:
+toggle-steam-devices:
     #!/usr/bin/bash
-    # Toggles whether Steam presents the system as a Steam Deck via -steamdeck
-    override_flag="$HOME/.config/bazzite/disable_steamdeck_flag"
-    session_dir="$HOME/.config/gamescope-session-plus/sessions.d"
-    session_file="$session_dir/steam"
-    mkdir -p "$(dirname "$override_flag")"
-    mkdir -p "$session_dir"
-    cat > "$session_file" <<'EOF'
-    DECK_OVERRIDE_FLAG="$HOME/.config/bazzite/disable_steamdeck_flag"
-    if [[ ! -f "$DECK_OVERRIDE_FLAG" ]]; then
-      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
-    else
-      export CLIENTCMD="steam -gamepadui -steamos3 -steampal"
-    fi
-    EOF
-    current_status="Enabled"
-    if [[ -f "$override_flag" ]]; then
-      current_status="Disabled"
-    fi
-    echo -e "\nCurrent Steam Deck presentation mode: $current_status\n"
-    CHOICE=$(ugum choose \
-      "Present as Steam Deck (Enable -steamdeck)" \
-      "Do Not Present as Steam Deck (Disable -steamdeck)" \
-      "Exit without changes")
-    case "$CHOICE" in
-      "Present as Steam Deck (Enable -steamdeck)")
-        if [[ -f "$override_flag" ]]; then
-          rm -f "$override_flag"
-          echo -e "\nSteam Deck presentation ENABLED. (-steamdeck will be passed to Steam)\n"
-          echo "Reboot your system for the change to take effect."
-        else
-          echo -e "\nAlready enabled.\n"
-        fi
-        ;;
-      "Do Not Present as Steam Deck (Disable -steamdeck)")
-        touch "$override_flag"
-        echo -e "\nSteam Deck presentation DISABLED. (-steamdeck will NOT be passed to Steam)\n"
-        echo "Reboot your system for the change to take effect."
-        ;;
-      "Exit without changes")
-        echo "No changes made."
-        ;;
-      *)
-        echo "Invalid choice. Exiting."
-        ;;
-    esac
+    # Writes the chosen Steam launch command override to a single file that
+    # bazzite-steam reads and acts on.
+    override_file="$HOME/.config/bazzite/steam_devices_overrides"
+    mkdir -p "$(dirname "$override_file")"
 
-# Toggle whether Steam launches with the -steamdeck flag or the -steammachine flag
-[group("gaming")]
-_toggle-steam-devices:
-    #!/usr/bin/bash
-    # Toggles whether Steam presents itself as a Steam Deck or a Steam Machine
-    override_flag="$HOME/.config/bazzite/enable-steammachine-flag"
+    # Refresh the gamescope-session-plus launcher so Game Mode reads the same
+    # override file, falling back to the base command when none is set.
     session_dir="$HOME/.config/gamescope-session-plus/sessions.d"
     session_file="$session_dir/steam"
-    mkdir -p "$(dirname "$override_flag")"
     mkdir -p "$session_dir"
     cat > "$session_file" <<'EOF'
-    MACHINE_OVERRIDE_FLAG="$HOME/.config/bazzite/enable-steammachine-flag"
-    if [[ ! -f "$MACHINE_OVERRIDE_FLAG" ]]; then
-      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
+    STEAM_DEVICES_OVERRIDES="$HOME/.config/bazzite/steam_devices_overrides"
+    if [[ -f "$STEAM_DEVICES_OVERRIDES" ]]; then
+      export CLIENTCMD="$(cat "$STEAM_DEVICES_OVERRIDES")"
     else
-      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steammachine"
+      export CLIENTCMD="steam -gamepadui -steamos3 -steampal -steamdeck"
     fi
     EOF
-    current_status="Steam Deck"
-    if [[ -f "$override_flag" ]]; then
-      current_status="Steam Machine"
+    
+    current_status="Default (no override set)"
+    if [[ -f "$override_file" ]]; then
+      current_status="$(cat "$override_file")"
     fi
-    echo -e "\nCurrent Steam device: $current_status\n"
+    echo -e "\nCurrent Steam device override: $current_status\n"
     CHOICE=$(ugum choose \
-      "Present as Steam Deck (Enable -steamdeck)" \
-      "Present as Steam Machine (Enable -steammachine)" \
-      "Exit without changes")
+      "Present as Steam Deck" \
+      "Present as Steam Machine" \
+      "Do not present as a Steam device" \
+      "Do nothing")
     case "$CHOICE" in
-      "Present as Steam Deck (Enable -steamdeck)")
-        if [[ -f "$override_flag" ]]; then
-          rm -f "$override_flag"
-          echo -e "\nSteam Deck presentation ENABLED. (-steamdeck will be passed to Steam)\n"
-          echo "Reboot your system for the change to take effect."
-        else
-          echo -e "\nAlready enabled.\n"
-        fi
-        ;;
-      "Present as Steam Machine (Enable -steammachine)")
-        touch "$override_flag"
-        echo -e "\nSteam Machine presentation ENABLED. (-steammachine will be passed to Steam)\n"
+      "Present as Steam Deck")
+        echo 'steam -gamepadui -steamos3 -steampal -steamdeck' > "$override_file"
+        echo -e "\nSteam will present as a Steam Deck.\n"
         echo "Reboot your system for the change to take effect."
         ;;
-      "Exit without changes")
+      "Present as Steam Machine")
+        echo 'steam -gamepadui -steamos3 -steampal -steammachine' > "$override_file"
+        echo -e "\nSteam will present as a Steam Machine.\n"
+        echo "Reboot your system for the change to take effect."
+        ;;
+      "Do not present as a Steam device")
+        echo "Warning: Not presenting as a Steam device will likely break certain aspects of Gamescope, such as Mangohud performance monitoring."
+        read -r -p "Do you wish to continue? y/n " CONFIRM
+        case "$CONFIRM" in
+          [yY]|[yY][eE][sS])
+            echo 'steam -gamepadui -steamos3 -steampal' > "$override_file"
+            echo -e "\nSteam will not present as a Steam device.\n"
+            echo "Reboot your system for the change to take effect."
+            ;;
+          *)
+            echo "No changes made."
+            ;;
+        esac
+        ;;
+      "Do nothing")
         echo "No changes made."
         ;;
       *)
